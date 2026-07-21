@@ -1,16 +1,22 @@
 import { Image } from 'expo-image';
 import { LinearGradient } from 'expo-linear-gradient';
+import { useState } from 'react';
 import { Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
 
 import { figmaPrototypeAssets } from '../data/figmaPrototypeAssets';
 import { colors } from '../theme/colors';
 
 type LoginScreenProps = {
-  onLogin: () => void;
+  onLogin: (payload: { email: string; password: string }) => Promise<void>;
   onSignUp: () => void;
+  loading?: boolean;
+  error?: string | null;
 };
 
-export function LoginScreen({ onLogin, onSignUp }: LoginScreenProps) {
+export function LoginScreen({ onLogin, onSignUp, loading, error }: LoginScreenProps) {
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+
   return (
     <View style={styles.screen}>
       <LinearGradient colors={['#2e7df6', 'rgba(18,194,233,0.35)']} style={styles.header} />
@@ -28,13 +34,35 @@ export function LoginScreen({ onLogin, onSignUp }: LoginScreenProps) {
 
       <View style={styles.form}>
         <Text style={styles.label}>Email</Text>
-        <TextInput placeholder="you@email.com" placeholderTextColor="#9aa3b2" style={styles.input} />
+        <TextInput
+          placeholder="you@email.com"
+          placeholderTextColor="#9aa3b2"
+          style={styles.input}
+          value={email}
+          autoCapitalize="none"
+          keyboardType="email-address"
+          onChangeText={setEmail}
+        />
         <Text style={styles.label}>Password</Text>
-        <TextInput placeholder="••••••••" placeholderTextColor="#5a6373" secureTextEntry style={styles.input} />
+        <TextInput
+          placeholder="••••••••"
+          placeholderTextColor="#5a6373"
+          secureTextEntry
+          style={styles.input}
+          value={password}
+          onChangeText={setPassword}
+        />
         <Text style={styles.forgot}>Forgot password?</Text>
+        {error ? <Text style={styles.errorText}>{error}</Text> : null}
 
-        <Pressable onPress={onLogin} style={styles.primaryButton}>
-          <Text style={styles.primaryText}>Log In</Text>
+        <Pressable
+          onPress={() => {
+            void onLogin({ email, password });
+          }}
+          style={[styles.primaryButton, loading && styles.disabledButton]}
+          disabled={loading}
+        >
+          <Text style={styles.primaryText}>{loading ? 'Logging In...' : 'Log In'}</Text>
         </Pressable>
         <Pressable onPress={onSignUp} style={styles.linkRow}>
           <Text style={styles.linkText}>Don't have an account? </Text>
@@ -90,6 +118,8 @@ const styles = StyleSheet.create({
     elevation: 2,
   },
   primaryText: { color: '#fff', fontFamily: 'Inter_600SemiBold', fontSize: 16 },
+  errorText: { color: '#ea4335', fontFamily: 'Inter_500Medium', fontSize: 12, marginBottom: 12 },
+  disabledButton: { opacity: 0.7 },
   linkRow: { marginTop: 28, alignSelf: 'center', flexDirection: 'row' },
   linkText: { color: '#8a93a3', fontFamily: 'Inter_400Regular', fontSize: 13 },
   linkAction: { color: colors.primary, fontFamily: 'Inter_600SemiBold', fontSize: 13 },

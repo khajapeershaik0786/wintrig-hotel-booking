@@ -1,10 +1,15 @@
 import { Image } from 'expo-image';
-import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { useState } from 'react';
+import { Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 
+import type { Profile } from '../api/backend';
 import { figmaPrototypeAssets } from '../data/figmaPrototypeAssets';
 import { colors } from '../theme/colors';
 
 type ProfileScreenProps = {
+  profile?: Profile | null;
+  onSaveProfile: (payload: { name?: string; phone?: string }) => Promise<void>;
+  onAskRag: (question: string) => Promise<string>;
   onLogout: () => void;
 };
 
@@ -16,7 +21,12 @@ const MENU_ITEMS = [
   { label: 'Settings', icon: '⚙️', bg: '#eaf1ff' },
 ];
 
-export function ProfileScreen({ onLogout }: ProfileScreenProps) {
+export function ProfileScreen({ profile, onSaveProfile, onAskRag, onLogout }: ProfileScreenProps) {
+  const [name, setName] = useState(profile?.name ?? 'Alex Morgan');
+  const [phone, setPhone] = useState(profile?.phone ?? '');
+  const [question, setQuestion] = useState('');
+  const [answer, setAnswer] = useState('');
+
   return (
     <View style={styles.screen}>
       <ScrollView showsVerticalScrollIndicator={false}>
@@ -24,8 +34,8 @@ export function ProfileScreen({ onLogout }: ProfileScreenProps) {
           <Text style={styles.headerTitle}>Profile</Text>
           <Image source={{ uri: figmaPrototypeAssets.profileAvatar }} style={styles.avatar} contentFit="cover" />
         </View>
-        <Text style={styles.name}>Alex Morgan</Text>
-        <Text style={styles.email}>alex.morgan@email.com</Text>
+        <Text style={styles.name}>{profile?.name ?? 'Alex Morgan'}</Text>
+        <Text style={styles.email}>{profile?.email ?? 'alex.morgan@email.com'}</Text>
 
         <View style={styles.statsCard}>
           <View style={styles.statItem}><Text style={styles.statValue}>12</Text><Text style={styles.statLabel}>Trips</Text></View>
@@ -36,6 +46,39 @@ export function ProfileScreen({ onLogout }: ProfileScreenProps) {
         </View>
 
         <View style={styles.menuSection}>
+          <View style={styles.editorCard}>
+            <Text style={styles.editorTitle}>Update profile</Text>
+            <TextInput value={name} onChangeText={setName} style={styles.input} placeholder="Name" />
+            <TextInput value={phone} onChangeText={setPhone} style={styles.input} placeholder="Phone" />
+            <Pressable
+              style={styles.saveButton}
+              onPress={() => {
+                void onSaveProfile({ name, phone });
+              }}
+            >
+              <Text style={styles.saveText}>Save Profile</Text>
+            </Pressable>
+          </View>
+
+          <View style={styles.editorCard}>
+            <Text style={styles.editorTitle}>Travel Assistant (RAG)</Text>
+            <TextInput
+              value={question}
+              onChangeText={setQuestion}
+              style={styles.input}
+              placeholder="Ask: Can I cancel after booking?"
+            />
+            <Pressable
+              style={styles.saveButton}
+              onPress={() => {
+                void onAskRag(question).then(setAnswer);
+              }}
+            >
+              <Text style={styles.saveText}>Ask Assistant</Text>
+            </Pressable>
+            {answer ? <Text style={styles.answer}>{answer}</Text> : null}
+          </View>
+
           {MENU_ITEMS.map((item) => (
             <Pressable key={item.label} style={styles.menuRow}>
               <View style={[styles.menuIcon, { backgroundColor: item.bg }]}><Text style={{ fontSize: 16 }}>{item.icon}</Text></View>
@@ -78,4 +121,24 @@ const styles = StyleSheet.create({
   menuIcon: { width: 32, height: 32, borderRadius: 10, alignItems: 'center', justifyContent: 'center' },
   menuLabel: { flex: 1, marginLeft: 12, color: '#12203a', fontFamily: 'Inter_500Medium', fontSize: 15 },
   menuChevron: { color: '#c4c9d4', fontSize: 24 },
+  editorCard: { backgroundColor: '#fff', borderRadius: 14, padding: 12, marginBottom: 10 },
+  editorTitle: { color: '#12203a', fontFamily: 'Inter_600SemiBold', fontSize: 14, marginBottom: 8 },
+  input: {
+    height: 42,
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: '#e5e8ef',
+    paddingHorizontal: 10,
+    marginBottom: 8,
+    fontFamily: 'Inter_400Regular',
+  },
+  saveButton: {
+    height: 38,
+    borderRadius: 10,
+    backgroundColor: colors.primary,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  saveText: { color: '#fff', fontFamily: 'Inter_600SemiBold', fontSize: 13 },
+  answer: { color: '#5a6373', fontFamily: 'Inter_400Regular', fontSize: 12, marginTop: 8 },
 });

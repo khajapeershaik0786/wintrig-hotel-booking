@@ -1,12 +1,14 @@
 import { Image } from 'expo-image';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 
+import type { Hotel } from '../api/backend';
 import { figmaPrototypeAssets } from '../data/figmaPrototypeAssets';
 import { colors } from '../theme/colors';
 
 type DestinationDetailScreenProps = {
+  hotel?: Hotel | null;
   onBack: () => void;
-  onBook: () => void;
+  onBook: () => Promise<void>;
 };
 
 const AMENITIES = [
@@ -18,22 +20,37 @@ const AMENITIES = [
 
 const INCLUDES = ['Round-trip flights', '4 nights boutique hotel', 'Guided sunset tour'];
 
-export function DestinationDetailScreen({ onBack, onBook }: DestinationDetailScreenProps) {
+export function DestinationDetailScreen({ hotel, onBack, onBook }: DestinationDetailScreenProps) {
+  const selectedHotel = hotel ?? {
+    id: 'fallback',
+    name: 'Santorini',
+    city: 'Oia',
+    country: 'Greece',
+    description:
+      'Santorini is one of the most iconic Greek islands, famous for its whitewashed villages, blue-domed churches, and dramatic sunsets over the caldera. Enjoy world-class dining and breathtaking sea views.',
+    price_per_night: '250',
+    rating: '4.9',
+    amenities: ['Beach', 'Dining', 'Culture', 'Sunset'],
+    image_url: figmaPrototypeAssets.destinationDetailHero,
+  };
+
   return (
     <View style={styles.screen}>
       <ScrollView showsVerticalScrollIndicator={false}>
         <View style={styles.heroWrap}>
-          <Image source={{ uri: figmaPrototypeAssets.destinationDetailHero }} style={styles.hero} contentFit="cover" />
+          <Image source={{ uri: selectedHotel.image_url }} style={styles.hero} contentFit="cover" />
           <Pressable onPress={onBack} style={styles.backBtn}><Text style={styles.backBtnText}>‹</Text></Pressable>
           <View style={styles.heartBtn}><Text style={styles.heartIcon}>♥</Text></View>
         </View>
 
         <View style={styles.content}>
           <View style={styles.titleRow}>
-            <Text style={styles.title}>Santorini</Text>
-            <View style={styles.ratingBadge}><Text style={styles.ratingText}>★ 4.9</Text></View>
+            <Text style={styles.title}>{selectedHotel.name}</Text>
+            <View style={styles.ratingBadge}><Text style={styles.ratingText}>★ {selectedHotel.rating}</Text></View>
           </View>
-          <Text style={styles.location}>📍 Oia, Santorini, Greece</Text>
+          <Text style={styles.location}>
+            📍 {selectedHotel.city}, {selectedHotel.country}
+          </Text>
 
           <View style={styles.amenities}>
             {AMENITIES.map((a) => (
@@ -46,8 +63,7 @@ export function DestinationDetailScreen({ onBack, onBook }: DestinationDetailScr
 
           <Text style={styles.sectionTitle}>About destination</Text>
           <Text style={styles.body}>
-            Santorini is one of the most iconic Greek islands, famous for its whitewashed villages, blue-domed churches,
-            and dramatic sunsets over the caldera. Enjoy world-class dining and breathtaking sea views.
+            {selectedHotel.description}
           </Text>
 
           <Text style={styles.sectionTitle}>What's included</Text>
@@ -63,9 +79,16 @@ export function DestinationDetailScreen({ onBack, onBook }: DestinationDetailScr
       <View style={styles.footer}>
         <View>
           <Text style={styles.priceLabel}>Total price</Text>
-          <Text style={styles.priceValue}>$1,250</Text>
+          <Text style={styles.priceValue}>${selectedHotel.price_per_night}</Text>
         </View>
-        <Pressable onPress={onBook} style={styles.bookBtn}><Text style={styles.bookBtnText}>Book Now</Text></Pressable>
+        <Pressable
+          onPress={() => {
+            void onBook();
+          }}
+          style={styles.bookBtn}
+        >
+          <Text style={styles.bookBtnText}>Book Now</Text>
+        </Pressable>
       </View>
     </View>
   );

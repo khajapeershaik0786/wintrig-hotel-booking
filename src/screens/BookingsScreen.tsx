@@ -2,15 +2,20 @@ import { Image } from 'expo-image';
 import { useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 
+import type { Booking } from '../api/backend';
 import { figmaPrototypeAssets } from '../data/figmaPrototypeAssets';
 import { colors } from '../theme/colors';
 
 type BookingsScreenProps = {
-  onOpenItinerary?: () => void;
+  bookings?: Booking[];
+  loading?: boolean;
+  onRefresh?: () => void;
+  onOpenItinerary?: (booking?: Booking) => void;
 };
 
-export function BookingsScreen({ onOpenItinerary }: BookingsScreenProps) {
+export function BookingsScreen({ bookings, loading, onRefresh, onOpenItinerary }: BookingsScreenProps) {
   const [tab, setTab] = useState<'upcoming' | 'completed'>('upcoming');
+  const rows = bookings?.length ? bookings : [];
 
   return (
     <View style={styles.screen}>
@@ -29,25 +34,40 @@ export function BookingsScreen({ onOpenItinerary }: BookingsScreenProps) {
 
         {tab === 'upcoming' ? (
           <>
-            <Pressable style={styles.bookingCard} onPress={onOpenItinerary}>
-              <Image source={{ uri: figmaPrototypeAssets.bookingSantorini }} style={styles.bookingImage} contentFit="cover" />
-              <View style={styles.bookingInfo}>
-                <Text style={styles.bookingTitle}>Santorini Escape</Text>
-                <Text style={styles.bookingDate}>📅 Jun 24 – Jun 28, 2026</Text>
-                <View style={[styles.badge, styles.badgeConfirmed]}><Text style={styles.badgeTextConfirmed}>Confirmed</Text></View>
-              </View>
-              <Text style={styles.chevron}>›</Text>
+            {rows.length ? (
+              rows.map((row) => (
+                <Pressable key={row.id} style={styles.bookingCard} onPress={() => onOpenItinerary?.(row)}>
+                  <Image
+                    source={{
+                      uri:
+                        row.image_url ||
+                        figmaPrototypeAssets.bookingSantorini ||
+                        figmaPrototypeAssets.bookingMaldives,
+                    }}
+                    style={styles.bookingImage}
+                    contentFit="cover"
+                  />
+                  <View style={styles.bookingInfo}>
+                    <Text style={styles.bookingTitle}>{row.hotel_name}</Text>
+                    <Text style={styles.bookingDate}>
+                      📅 {row.check_in} – {row.check_out}
+                    </Text>
+                    <View style={[styles.badge, row.status === 'confirmed' ? styles.badgeConfirmed : styles.badgePending]}>
+                      <Text style={row.status === 'confirmed' ? styles.badgeTextConfirmed : styles.badgeTextPending}>
+                        {row.status[0]?.toUpperCase()}
+                        {row.status.slice(1)}
+                      </Text>
+                    </View>
+                  </View>
+                  <Text style={styles.chevron}>›</Text>
+                </Pressable>
+              ))
+            ) : (
+              <Text style={styles.emptyState}>No bookings yet. Create a booking from destination details.</Text>
+            )}
+            <Pressable onPress={onRefresh}>
+              <Text style={styles.moreLink}>{loading ? 'Refreshing...' : 'Refresh bookings'}</Text>
             </Pressable>
-            <Pressable style={styles.bookingCard}>
-              <Image source={{ uri: figmaPrototypeAssets.bookingMaldives }} style={styles.bookingImage} contentFit="cover" />
-              <View style={styles.bookingInfo}>
-                <Text style={styles.bookingTitle}>Maldives Retreat</Text>
-                <Text style={styles.bookingDate}>📅 Jul 12 – Jul 18, 2026</Text>
-                <View style={[styles.badge, styles.badgePending]}><Text style={styles.badgeTextPending}>Pending</Text></View>
-              </View>
-              <Text style={styles.chevron}>›</Text>
-            </Pressable>
-            <Text style={styles.moreLink}>Explore more destinations →</Text>
           </>
         ) : (
           <Text style={styles.emptyState}>No completed trips yet.</Text>

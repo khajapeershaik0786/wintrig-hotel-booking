@@ -7,11 +7,13 @@ import {
 } from '@expo-google-fonts/inter';
 import { NavigationContainer, DefaultTheme } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { StatusBar } from 'expo-status-bar';
-import { useEffect, useState } from 'react';
-import { ActivityIndicator, StyleSheet, View } from 'react-native';
+import { useEffect, useMemo, useState } from 'react';
+import { ActivityIndicator, Alert, StyleSheet, View } from 'react-native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 
+import { backendApi, type AuthUser, type Booking, type Hotel, type Profile } from './src/api/backend';
 import { hydrateItineraryFromApi } from './src/api/itineraryApi';
 import { mockSantoriniItinerary } from './src/data/mockItinerary';
 import { MainTabs } from './src/navigation/MainTabs';
@@ -26,6 +28,7 @@ import { colors } from './src/theme/colors';
 import type { TripItinerary } from './src/types/itinerary';
 
 const API_BASE_URL = process.env.EXPO_PUBLIC_API_URL ?? 'http://localhost:4000';
+const TOKEN_STORAGE_KEY = 'wintrig_auth_token';
 const Stack = createNativeStackNavigator();
 
 const navigationTheme = {
@@ -36,6 +39,16 @@ const navigationTheme = {
 export default function App() {
   const [fontsLoaded] = useFonts({ Inter_400Regular, Inter_500Medium, Inter_600SemiBold, Inter_700Bold });
   const [itinerary, setItinerary] = useState<TripItinerary>(mockSantoriniItinerary);
+  const [token, setToken] = useState<string | null>(null);
+  const [user, setUser] = useState<AuthUser | null>(null);
+  const [profile, setProfile] = useState<Profile | null>(null);
+  const [hotels, setHotels] = useState<Hotel[]>([]);
+  const [bookings, setBookings] = useState<Booking[]>([]);
+  const [selectedHotel, setSelectedHotel] = useState<Hotel | null>(null);
+  const [authLoading, setAuthLoading] = useState(false);
+  const [authError, setAuthError] = useState<string | null>(null);
+  const [hotelsLoading, setHotelsLoading] = useState(false);
+  const [bookingsLoading, setBookingsLoading] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
@@ -52,6 +65,137 @@ export default function App() {
     void loadItinerary();
     return () => { cancelled = true; };
   }, []);
+
+  useEffect(() => {
+    void AsyncStorage.getItem(TOKEN_STORAGE_KEY).then((storedToken) => {
+      if (storedToken) {
+        setToken(storedToken);
+      }
+    });
+  }, []);
+
+  useEffect(() => {
+    if (!token) {
+      return;
+    }
+    void Promise.all([
+      backendApi.getProfile(token).then(setProfile).catch(() => undefined),
+      backendApi.myBookings(token).then(setBookings).catch(() => undefined),
+      backendApi.listHotels().then(setHotels).catch(() => undefined),
+    ]);
+  }, [token]);
+
+  const authHandlers = useMemo(
+    () => ({
+      login: async (payload: { email: string; password: string }) => {
+        setAuthLoading(true);
+        setAuthError(null);
+        try {
+          const result = await backendApi.login(payload);
+          setToken(result.token);
+          setUser(result.user);
+          await AsyncStorage.setItem(TOKEN_STORAGE_KEY, result.token);
+          return true;
+        } catch (error) {
+          setAuthError((error as Error).message);
+          return false;
+        } finally {
+          setAuthLoading(false);
+        }
+      },
+      signup: async (payload: { name: string; email: string; password: string }) => {
+        setAuthLoading(true);
+        setAuthError(null);
+        try {
+          const result = await backendApi.signup(payload);
+          setToken(result.token);
+          setUser(result.user);
+          await AsyncStorage.setItem(TOKEN_STORAGE_KEY, result.token);
+          return true;
+        } catch (error) {
+          setAuthError((error as Error).message);
+          return false;
+        } finally {
+          setAuthLoading(false);
+        }
+      },
+      logout: async () => {
+        setToken(null);
+        setUser(null);
+        setProfile(null);
+        setBookings([]);
+        await AsyncStorage.removeItem(TOKEN_STORAGE_KEY);
+      },
+    }),
+    [],
+  );
+
+  async function searchHotels(query: string) {
+    setHotelsLoading(true);
+    try {
+      const result = await backendApi.listHotels(query);
+      setHotels(result);
+    } catch {
+      // keep previous list
+    } finally {
+      setHotelsLoading(false);
+    }
+  }
+
+  async function refreshBookings() {
+    if (!token) return;
+    setBookingsLoading(true);
+    try {
+      const result = await backendApi.myBookings(token);
+      setBookings(result);
+    } catch {
+      // ignore
+    } finally {
+      setBookingsLoading(false);
+    }
+  }
+
+  async function saveProfile(payload: { name?: string; phone?: string }) {
+    if (!token) return;
+    try {
+      const updated = await backendApi.updateProfile(token, payload);
+      setProfile(updated);
+      Alert.alert('Profile updated');
+    } catch (error) {
+      Alert.alert('Profile update failed', (error as Error).message);
+    }
+  }
+
+  async function askRag(question: string) {
+    if (!question.trim()) {
+      return 'Please enter a question.';
+    }
+    try {
+      const result = await backendApi.ragQuery(question);
+      return result.answer;
+    } catch (error) {
+      return `Assistant failed: ${(error as Error).message}`;
+    }
+  }
+
+  async function createBookingFromSelectedHotel() {
+    if (!token || !selectedHotel) {
+      Alert.alert('Login required', 'Please log in before booking.');
+      return;
+    }
+    try {
+      await backendApi.createBooking(token, {
+        hotelId: selectedHotel.id,
+        checkIn: '2026-08-10',
+        checkOut: '2026-08-14',
+        guests: 2,
+      });
+      await refreshBookings();
+      Alert.alert('Booking confirmed', `${selectedHotel.name} booked successfully.`);
+    } catch (error) {
+      Alert.alert('Booking failed', (error as Error).message);
+    }
+  }
 
   if (!fontsLoaded) {
     return (
@@ -80,16 +224,30 @@ export default function App() {
           <Stack.Screen name="Login">
             {({ navigation }) => (
               <LoginScreen
-                onLogin={() => navigation.replace('MainApp')}
+                onLogin={async (payload) => {
+                  const ok = await authHandlers.login(payload);
+                  if (ok) {
+                    navigation.replace('MainApp');
+                  }
+                }}
                 onSignUp={() => navigation.navigate('SignUp')}
+                loading={authLoading}
+                error={authError}
               />
             )}
           </Stack.Screen>
           <Stack.Screen name="SignUp">
             {({ navigation }) => (
               <SignUpScreen
-                onSignUp={() => navigation.replace('MainApp')}
+                onSignUp={async (payload) => {
+                  const ok = await authHandlers.signup(payload);
+                  if (ok) {
+                    navigation.replace('MainApp');
+                  }
+                }}
                 onLogin={() => navigation.goBack()}
+                loading={authLoading}
+                error={authError}
               />
             )}
           </Stack.Screen>
@@ -99,8 +257,27 @@ export default function App() {
             {({ navigation }) => (
               <MainTabs
                 onOpenItinerary={() => navigation.navigate('Itinerary')}
-                onOpenDestination={() => navigation.navigate('DestinationDetail')}
-                onLogout={() => navigation.replace('Login')}
+                onOpenDestination={(hotel) => {
+                  setSelectedHotel(hotel);
+                  navigation.navigate('DestinationDetail');
+                }}
+                hotels={hotels}
+                hotelsLoading={hotelsLoading}
+                onSearchHotels={(query) => {
+                  void searchHotels(query);
+                }}
+                bookings={bookings}
+                bookingsLoading={bookingsLoading}
+                onRefreshBookings={() => {
+                  void refreshBookings();
+                }}
+                profile={profile}
+                onSaveProfile={saveProfile}
+                onAskRag={askRag}
+                onLogout={async () => {
+                  await authHandlers.logout();
+                  navigation.replace('Login');
+                }}
               />
             )}
           </Stack.Screen>
@@ -118,8 +295,9 @@ export default function App() {
           <Stack.Screen name="DestinationDetail">
             {({ navigation }) => (
               <DestinationDetailScreen
+                hotel={selectedHotel}
                 onBack={() => navigation.goBack()}
-                onBook={() => navigation.navigate('Itinerary')}
+                onBook={createBookingFromSelectedHotel}
               />
             )}
           </Stack.Screen>

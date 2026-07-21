@@ -1,16 +1,23 @@
 import { Image } from 'expo-image';
 import { LinearGradient } from 'expo-linear-gradient';
+import { useState } from 'react';
 import { Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
 
 import { figmaPrototypeAssets } from '../data/figmaPrototypeAssets';
 import { colors } from '../theme/colors';
 
 type SignUpScreenProps = {
-  onSignUp: () => void;
+  onSignUp: (payload: { name: string; email: string; password: string }) => Promise<void>;
   onLogin: () => void;
+  loading?: boolean;
+  error?: string | null;
 };
 
-export function SignUpScreen({ onSignUp, onLogin }: SignUpScreenProps) {
+export function SignUpScreen({ onSignUp, onLogin, loading, error }: SignUpScreenProps) {
+  const [name, setName] = useState('');
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+
   return (
     <View style={styles.screen}>
       <LinearGradient colors={['#2e7df6', 'rgba(18,194,233,0.35)']} style={styles.header} />
@@ -28,15 +35,43 @@ export function SignUpScreen({ onSignUp, onLogin }: SignUpScreenProps) {
 
       <View style={styles.form}>
         <Text style={styles.label}>Full Name</Text>
-        <TextInput placeholder="Alex Morgan" placeholderTextColor="#9aa3b2" style={styles.input} />
+        <TextInput
+          placeholder="Alex Morgan"
+          placeholderTextColor="#9aa3b2"
+          style={styles.input}
+          value={name}
+          onChangeText={setName}
+        />
         <Text style={styles.label}>Email</Text>
-        <TextInput placeholder="you@email.com" placeholderTextColor="#9aa3b2" style={styles.input} />
+        <TextInput
+          placeholder="you@email.com"
+          placeholderTextColor="#9aa3b2"
+          style={styles.input}
+          value={email}
+          keyboardType="email-address"
+          autoCapitalize="none"
+          onChangeText={setEmail}
+        />
         <Text style={styles.label}>Password</Text>
-        <TextInput placeholder="••••••••" placeholderTextColor="#5a6373" secureTextEntry style={styles.input} />
+        <TextInput
+          placeholder="••••••••"
+          placeholderTextColor="#5a6373"
+          secureTextEntry
+          style={styles.input}
+          value={password}
+          onChangeText={setPassword}
+        />
         <Text style={styles.terms}>I agree to the Terms & Privacy Policy</Text>
+        {error ? <Text style={styles.errorText}>{error}</Text> : null}
 
-        <Pressable onPress={onSignUp} style={styles.primaryButton}>
-          <Text style={styles.primaryText}>Sign Up</Text>
+        <Pressable
+          onPress={() => {
+            void onSignUp({ name, email, password });
+          }}
+          style={[styles.primaryButton, loading && styles.disabledButton]}
+          disabled={loading}
+        >
+          <Text style={styles.primaryText}>{loading ? 'Creating Account...' : 'Sign Up'}</Text>
         </Pressable>
         <Pressable onPress={onLogin} style={styles.linkRow}>
           <Text style={styles.linkText}>Already have an account? </Text>
@@ -92,6 +127,8 @@ const styles = StyleSheet.create({
     elevation: 2,
   },
   primaryText: { color: '#fff', fontFamily: 'Inter_600SemiBold', fontSize: 16 },
+  errorText: { color: '#ea4335', fontFamily: 'Inter_500Medium', fontSize: 12, marginBottom: 10 },
+  disabledButton: { opacity: 0.7 },
   linkRow: { marginTop: 28, alignSelf: 'center', flexDirection: 'row' },
   linkText: { color: '#8a93a3', fontFamily: 'Inter_400Regular', fontSize: 13 },
   linkAction: { color: colors.primary, fontFamily: 'Inter_600SemiBold', fontSize: 13 },

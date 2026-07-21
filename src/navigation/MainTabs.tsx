@@ -1,6 +1,7 @@
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { Text, StyleSheet, View } from 'react-native';
 
+import type { Booking, Hotel, Profile } from '../api/backend';
 import { BookingsScreen } from '../screens/BookingsScreen';
 import { DashboardScreen } from '../screens/DashboardScreen';
 import { ExploreScreen } from '../screens/ExploreScreen';
@@ -32,11 +33,33 @@ const tabStyles = StyleSheet.create({
 
 type MainTabsProps = {
   onOpenItinerary: () => void;
-  onOpenDestination: () => void;
+  onOpenDestination: (hotel: Hotel) => void;
+  hotels: Hotel[];
+  hotelsLoading: boolean;
+  onSearchHotels: (query: string) => void;
+  bookings: Booking[];
+  bookingsLoading: boolean;
+  onRefreshBookings: () => void;
+  profile: Profile | null;
+  onSaveProfile: (payload: { name?: string; phone?: string }) => Promise<void>;
+  onAskRag: (question: string) => Promise<string>;
   onLogout: () => void;
 };
 
-export function MainTabs({ onOpenItinerary, onOpenDestination, onLogout }: MainTabsProps) {
+export function MainTabs({
+  onOpenItinerary,
+  onOpenDestination,
+  hotels,
+  hotelsLoading,
+  onSearchHotels,
+  bookings,
+  bookingsLoading,
+  onRefreshBookings,
+  profile,
+  onSaveProfile,
+  onAskRag,
+  onLogout,
+}: MainTabsProps) {
   return (
     <Tab.Navigator
       screenOptions={{
@@ -67,19 +90,40 @@ export function MainTabs({ onOpenItinerary, onOpenDestination, onLogout }: MainT
         name="Explore"
         options={{ tabBarIcon: ({ focused }) => <TabIcon label="Explore" focused={focused} /> }}
       >
-        {() => <ExploreScreen onOpenDestination={onOpenDestination} />}
+        {() => (
+          <ExploreScreen
+            hotels={hotels}
+            loading={hotelsLoading}
+            onSearch={onSearchHotels}
+            onOpenDestination={onOpenDestination}
+          />
+        )}
       </Tab.Screen>
       <Tab.Screen
         name="Bookings"
         options={{ tabBarIcon: ({ focused }) => <TabIcon label="Bookings" focused={focused} /> }}
       >
-        {() => <BookingsScreen onOpenItinerary={onOpenItinerary} />}
+        {() => (
+          <BookingsScreen
+            bookings={bookings}
+            loading={bookingsLoading}
+            onRefresh={onRefreshBookings}
+            onOpenItinerary={onOpenItinerary}
+          />
+        )}
       </Tab.Screen>
       <Tab.Screen
         name="Profile"
         options={{ tabBarIcon: ({ focused }) => <TabIcon label="Profile" focused={focused} /> }}
       >
-        {() => <ProfileScreen onLogout={onLogout} />}
+        {() => (
+          <ProfileScreen
+            profile={profile}
+            onSaveProfile={onSaveProfile}
+            onAskRag={onAskRag}
+            onLogout={onLogout}
+          />
+        )}
       </Tab.Screen>
     </Tab.Navigator>
   );

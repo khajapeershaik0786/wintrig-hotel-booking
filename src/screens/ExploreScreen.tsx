@@ -1,7 +1,8 @@
 import { Image } from 'expo-image';
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 
+import type { Hotel } from '../api/backend';
 import { figmaPrototypeAssets } from '../data/figmaPrototypeAssets';
 import { colors } from '../theme/colors';
 
@@ -15,11 +16,29 @@ const DESTINATIONS = [
 ];
 
 type ExploreScreenProps = {
-  onOpenDestination?: () => void;
+  hotels?: Hotel[];
+  onSearch: (query: string) => void;
+  loading?: boolean;
+  onOpenDestination?: (hotel: Hotel) => void;
 };
 
-export function ExploreScreen({ onOpenDestination }: ExploreScreenProps) {
+export function ExploreScreen({ hotels, onSearch, loading, onOpenDestination }: ExploreScreenProps) {
   const [selectedCategory, setSelectedCategory] = useState('All');
+  const [query, setQuery] = useState('');
+
+  const displayHotels = useMemo(() => {
+    if (hotels?.length) {
+      return hotels.map((hotel) => ({
+        id: hotel.id,
+        name: hotel.name,
+        rating: String(hotel.rating),
+        price: `From $${hotel.price_per_night}`,
+        image: hotel.image_url,
+        raw: hotel,
+      }));
+    }
+    return DESTINATIONS.map((dest) => ({ ...dest, raw: null }));
+  }, [hotels]);
 
   return (
     <View style={styles.screen}>
@@ -28,7 +47,17 @@ export function ExploreScreen({ onOpenDestination }: ExploreScreenProps) {
         <Text style={styles.subtitle}>Find your perfect destination</Text>
 
         <View style={styles.searchRow}>
-          <View style={styles.searchBar}><Text style={styles.searchText}>Search places</Text></View>
+          <Pressable
+            style={styles.searchBar}
+            onPress={() => {
+              // Cycles quick prototype searches while keeping UI simple.
+              const next = query ? '' : 'santorini';
+              setQuery(next);
+              onSearch(next);
+            }}
+          >
+            <Text style={styles.searchText}>{query ? `Search: ${query}` : 'Search places'}</Text>
+          </Pressable>
           <View style={styles.filterBtn}><Text style={styles.filterIcon}>☰</Text></View>
         </View>
 
@@ -41,8 +70,16 @@ export function ExploreScreen({ onOpenDestination }: ExploreScreenProps) {
         </ScrollView>
 
         <View style={styles.grid}>
-          {DESTINATIONS.map((dest) => (
-            <Pressable key={dest.id} style={styles.card} onPress={onOpenDestination}>
+          {displayHotels.map((dest) => (
+            <Pressable
+              key={dest.id}
+              style={styles.card}
+              onPress={() => {
+                if (dest.raw && onOpenDestination) {
+                  onOpenDestination(dest.raw);
+                }
+              }}
+            >
               <Image source={{ uri: dest.image }} style={styles.cardImage} contentFit="cover" />
               <Text style={styles.cardTitle}>{dest.name}</Text>
               <Text style={styles.cardRating}>★ {dest.rating}</Text>
@@ -50,6 +87,7 @@ export function ExploreScreen({ onOpenDestination }: ExploreScreenProps) {
             </Pressable>
           ))}
         </View>
+        {loading ? <Text style={styles.loadingText}>Loading destinations...</Text> : null}
       </ScrollView>
     </View>
   );
@@ -80,4 +118,5 @@ const styles = StyleSheet.create({
   cardTitle: { marginTop: 8, color: '#12203a', fontFamily: 'Inter_700Bold', fontSize: 15 },
   cardRating: { color: '#f5a623', fontFamily: 'Inter_500Medium', fontSize: 12, marginTop: 4 },
   cardPrice: { color: colors.primary, fontFamily: 'Inter_600SemiBold', fontSize: 12, marginTop: 4, marginBottom: 4 },
+  loadingText: { textAlign: 'center', color: '#8a93a3', fontFamily: 'Inter_400Regular', marginTop: 12 },
 });
