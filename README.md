@@ -30,7 +30,12 @@ npm run ios
 npm run android
 ```
 
-Set `EXPO_PUBLIC_API_URL=http://localhost:4000` for local API.
+Configure the API endpoint in a root `.env` file (see `.env.example`):
+
+- Production: `EXPO_PUBLIC_API_URL=https://wintrig-hotel-booking.onrender.com`
+- Local API: `EXPO_PUBLIC_API_URL=http://localhost:4000`
+
+Restart the Expo dev server after changing `.env` so the new value is bundled.
 
 ## Backend setup (Neon + Render)
 
