@@ -260,6 +260,11 @@ export default function App() {
                 onOpenDestination={(hotel) => {
                   setSelectedHotel(hotel);
                   navigation.navigate('DestinationDetail');
+                  // Refresh with the latest server-side details in the background.
+                  backendApi
+                    .getHotel(hotel.id)
+                    .then((fresh) => setSelectedHotel(fresh))
+                    .catch(() => undefined);
                 }}
                 hotels={hotels}
                 hotelsLoading={hotelsLoading}

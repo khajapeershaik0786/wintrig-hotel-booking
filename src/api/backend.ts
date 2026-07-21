@@ -89,10 +89,19 @@ export const backendApi = {
       },
       token,
     ),
-  listHotels: (query?: string) => {
-    const queryString = query ? `?query=${encodeURIComponent(query)}` : '';
-    return request<Hotel[]>(`/api/hotels${queryString}`);
+  listHotels: (params?: string | { query?: string; city?: string; minPrice?: number; maxPrice?: number }) => {
+    const filters = typeof params === 'string' ? { query: params } : params ?? {};
+    const search = new URLSearchParams();
+    if (filters.query) search.set('query', filters.query);
+    if (filters.city) search.set('city', filters.city);
+    if (filters.minPrice != null) search.set('minPrice', String(filters.minPrice));
+    if (filters.maxPrice != null) search.set('maxPrice', String(filters.maxPrice));
+    const queryString = search.toString();
+    return request<Hotel[]>(`/api/hotels${queryString ? `?${queryString}` : ''}`);
   },
+  getHotel: (id: string) => request<Hotel>(`/api/hotels/${encodeURIComponent(id)}`),
+  searchSuggestions: (q: string) =>
+    request<string[]>(`/api/search/suggestions?q=${encodeURIComponent(q)}`),
   createBooking: (
     token: string,
     payload: { hotelId: string; checkIn: string; checkOut: string; guests: number },
