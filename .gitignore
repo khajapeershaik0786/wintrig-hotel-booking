@@ -37,6 +37,9 @@ server/.env
 # typescript
 *.tsbuildinfo
 
+# server build output
+server/dist/
+
 # generated native folders
 /ios
 /android

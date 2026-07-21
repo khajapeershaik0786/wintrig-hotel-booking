@@ -53,17 +53,26 @@ Required env values:
 
 ### 2) Deploy on Render (free)
 
-This repo includes `render.yaml` with service `wintrig-api` (rootDir `server`).
+This repo includes `render.yaml` with service `wintrig-api` (`rootDir: server`).
 
-In Render:
+**Important:** do not start the Expo `index.ts`. The API lives in `server/`.
 
-1. New Web Service -> connect repo
-2. Render detects `render.yaml`
-3. Set secrets:
-   - `DATABASE_URL` (Neon)
-   - `JWT_SECRET`
-   - `ADMIN_API_KEY`
-4. Deploy
+In Render dashboard for the web service, set:
+
+| Setting | Value |
+| --- | --- |
+| Root Directory | `server` |
+| Build Command | `npm install && npm run build` |
+| Start Command | `npm start` |
+
+Then set secrets:
+
+- `DATABASE_URL` (Neon)
+- `JWT_SECRET`
+- `ADMIN_API_KEY`
+- `GROQ_API_KEY` (optional, for free LLM answers)
+
+Redeploy after changing these settings.
 
 ## API reference
 
