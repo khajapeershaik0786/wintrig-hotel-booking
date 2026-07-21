@@ -27,7 +27,7 @@ import { SplashScreen } from './src/screens/SplashScreen';
 import { colors } from './src/theme/colors';
 import type { TripItinerary } from './src/types/itinerary';
 
-const API_BASE_URL = process.env.EXPO_PUBLIC_API_URL ?? 'http://localhost:4000';
+const API_BASE_URL = process.env.EXPO_PUBLIC_API_URL ?? 'https://wintrig-hotel-booking.onrender.com';
 const TOKEN_STORAGE_KEY = 'wintrig_auth_token';
 const Stack = createNativeStackNavigator();
 

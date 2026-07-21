@@ -40,7 +40,7 @@ export type Profile = {
   created_at: string;
 };
 
-const API_BASE_URL = process.env.EXPO_PUBLIC_API_URL ?? 'http://localhost:4000';
+const API_BASE_URL = process.env.EXPO_PUBLIC_API_URL ?? 'https://wintrig-hotel-booking.onrender.com';
 
 async function request<T>(path: string, init?: RequestInit, token?: string): Promise<T> {
   const response = await fetch(`${API_BASE_URL}${path}`, {
