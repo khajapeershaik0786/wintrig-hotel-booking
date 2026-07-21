@@ -102,6 +102,12 @@ async function runMigrations() {
       created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
     );
   `);
+  // Patch pre-existing user tables created by older schemas (CREATE TABLE
+  // IF NOT EXISTS never alters an existing table), so all expected columns exist.
+  await pool.query('ALTER TABLE users ADD COLUMN IF NOT EXISTS name TEXT;');
+  await pool.query('ALTER TABLE users ADD COLUMN IF NOT EXISTS phone TEXT;');
+  await pool.query('ALTER TABLE users ADD COLUMN IF NOT EXISTS avatar_url TEXT;');
+  await pool.query('ALTER TABLE users ADD COLUMN IF NOT EXISTS created_at TIMESTAMPTZ NOT NULL DEFAULT NOW();');
   await pool.query(`
     CREATE TABLE IF NOT EXISTS hotels (
       id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
