@@ -202,8 +202,20 @@ const signupSchema = z.object({
 });
 
 app.get('/health', async (_req, res) => {
-  const db = await pool.query('SELECT 1');
-  res.json({ ok: true, db: db.rowCount === 1 });
+  // Never block on the database: report liveness immediately and probe the DB
+  // best-effort with a short timeout so a slow/unreachable DB can't hang health.
+  let dbOk = false;
+  try {
+    const probe = pool.query('SELECT 1');
+    const timeout = new Promise<never>((_, reject) =>
+      setTimeout(() => reject(new Error('db probe timeout')), 2000),
+    );
+    const db = (await Promise.race([probe, timeout])) as { rowCount: number | null };
+    dbOk = db.rowCount === 1;
+  } catch {
+    dbOk = false;
+  }
+  res.json({ ok: true, db: dbOk });
 });
 
 app.post('/api/auth/signup', async (req, res) => {
@@ -491,20 +503,33 @@ app.use((error: Error, _req: Request, res: Response, _next: NextFunction) => {
   res.status(500).json({ message: 'Internal server error', error: error.message });
 });
 
-async function bootstrap() {
-  if (env.AUTO_MIGRATE === 'true') {
+async function runStartupTasks() {
+  if (env.AUTO_MIGRATE !== 'true') {
+    return;
+  }
+  try {
+    // eslint-disable-next-line no-console
+    console.log('Running migrations and seeding...');
     await runMigrations();
     await seedHotels();
     await seedKnowledgeBase();
+    // eslint-disable-next-line no-console
+    console.log('Migrations and seeding complete.');
+  } catch (error) {
+    // eslint-disable-next-line no-console
+    console.error('Startup DB tasks failed (server still listening):', error);
   }
+}
+
+function bootstrap() {
+  // Bind the port first so the platform (Render) detects an open port and the
+  // service goes live immediately. DB migrations/seeding run afterwards in the
+  // background so a slow or unreachable database never blocks startup.
   app.listen(port, () => {
     // eslint-disable-next-line no-console
     console.log(`Wintrig API listening on http://localhost:${port}`);
+    void runStartupTasks();
   });
 }
 
-bootstrap().catch((error) => {
-  // eslint-disable-next-line no-console
-  console.error('Failed to start API:', error);
-  process.exit(1);
-});
+bootstrap();
